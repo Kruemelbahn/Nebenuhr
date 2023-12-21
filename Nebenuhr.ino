@@ -147,6 +147,7 @@ void loop()
 void notifyFastClock( uint8_t Rate, uint8_t Day, uint8_t Hour, uint8_t Minute, uint8_t Sync )
 {
 #if defined DEBUG
+  Serial.println();
   Serial.print(F("notifyFastClock "));
   Serial.print(Hour);
   Serial.print(":");
@@ -158,4 +159,9 @@ void notifyFastClock( uint8_t Rate, uint8_t Day, uint8_t Hour, uint8_t Minute, u
 	Serial.println("]");
 #endif    
   SetFastClock(Rate, Day, Hour, Minute, Sync);
+}
+
+void notifyFastClockFracMins(uint16_t FracMins)
+{
+  HandleFracMins(FracMins);
 }

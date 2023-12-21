@@ -1,8 +1,8 @@
 //=== LocoNet for Nebenuhr ===
-#include <LocoNetKS.h>
+#include <LocoNet.h>
 
 //=== declaration of var's =======================================
-LocoNetFastClockClassKS FastClockKS;
+LocoNetFastClockClass  FastClock;
 
 static  lnMsg          *LnPacket;
 static  LnBuf          LnTxBuffer;
@@ -31,6 +31,7 @@ unsigned long ul_LastFastClockTick = 0;
 
 uint8_t ui8_WaitForTelegram = 0;
 unsigned long ul_WaitStartForTelegram = 0;
+int16_t i16_FracMinStart(0);
 
 //=== functions for receiving telegrams from SerialMonitor =======
 #if defined TELEGRAM_FROM_SERIAL
@@ -108,11 +109,10 @@ void InitLocoNet()
   if(ENABLE_LN_FC_MODUL)
   {
     // Initialize the Fast Clock
-    FastClockKS.init(0, 0, 0); // DCS100CompatibleSpeed - CorrectDCS100Clock - NotifyFracMin
-    FastClockKS.initJMRI(ENABLE_LN_FC_JMRI); // IsJMRI
+    FastClock.init(0, 0, 1); // DCS100CompatibleSpeed - CorrectDCS100Clock - NotifyFracMin
   
     // Poll the Current Time from the Command Station
-    FastClockKS.poll();
+    PollFastClock();
   }
 
 #if defined TELEGRAM_FROM_SERIAL
@@ -145,8 +145,15 @@ void HandleLocoNetMessages()
 #endif
   if(LnPacket)
   {
-    if (ENABLE_LN_FC_MODUL) 
-      FastClockKS.processMessage(LnPacket);
+    if (ENABLE_LN_FC_MODUL)
+    {
+      // JMRI sends only EF 0E 7B ... (OPC_WR_SL_DATA) with clk_cntrl == 0 -> so we correct it:
+      if (ENABLE_LN_FC_JMRI && (LnPacket->fc.slot == FC_SLOT) && (LnPacket->fc.command == OPC_WR_SL_DATA) && !(LnPacket->fc.clk_cntrl & 0x40))
+        LnPacket->fc.clk_cntrl |= 0x40;
+      if ((LnPacket->fc.slot == FC_SLOT) && ((LnPacket->fc.command == OPC_WR_SL_DATA) || (LnPacket->fc.command == OPC_SL_RD_DATA)))
+        i16_FracMinStart = 0x3FFF/*FC_FRAC_MIN_BASE*/ - ((LnPacket->fc.frac_minsh << 7) + LnPacket->fc.frac_minsl);
+      FastClock.processMessage(LnPacket); // will call 'notifyFastClock' with sync=1 if neccessary 
+    }
 
     uint8_t ui8_msgLen = getLnMsgSize(LnPacket);
     uint8_t ui8_msgOPCODE = LnPacket->data[0];
@@ -160,13 +167,29 @@ void HandleLocoNetMessages()
   } // if(LnPacket)
 
 	if (ENABLE_LN_FC_MODUL/* we are also Slave */ && isTimeForProcessActions(&ul_LastFastClockTick, 67))
-    FastClockKS.process66msActions();
+    FastClock.process66msActions(); // will call 'notifyFastClock' with sync=0 if neccessary 
 }  
+
+void HandleFracMins(uint16_t FracMins)
+{
+  if (!ENABLE_LN_FC_MODUL || !GetClockRate())
+    return;
+
+  if ((i16_FracMinStart - 910) > FracMins) // 910 = (approx.) 60000ms / 66ms
+  {
+    i16_FracMinStart = FracMins;
+    if(ENABLE_LN_FC_INTERN)
+      IncFastClock(1);
+  }
+}
 
 void PollFastClock()
 {
 	// Poll the Current Time from the Command Station
-	FastClockKS.poll();
+	FastClock.poll();
+#if defined DEBUG
+  Serial.println("...poll...");
+#endif
 }
 
 #if defined DEBUG || defined TELEGRAM_FROM_SERIAL
