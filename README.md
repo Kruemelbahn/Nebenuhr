@@ -8,4 +8,3 @@ For more details please refer to the manual [manual](Nebenuhr.pdf)<br>
 Nebenuhr requires my libraries listed below in addition to various Arduino standard libraries:<br> 
 - [4x7Segment](https://www.github.com/Kruemelbahn/4x7Segment)
 - [HeartBeat](https://www.github.com/Kruemelbahn/HeartBeat)<br>
-- [OLEDPanel](https://www.github.com/Kruemelbahn/OLEDPanel)<br>
