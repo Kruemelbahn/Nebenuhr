@@ -216,7 +216,8 @@ void OutTextClockStatus()
     if(BA_MODUS_FC_SLAVE)
     {
       lcd.print(F("1:"));
-		  decout(lcd, ui8_Rate, 2);
+      // in Slave-mode, rate is coming direct from FastClock-Master
+		  decout(lcd, ui8_Rate, 2); // Rate: 0 = Freeze clock, 1 = normal, 10 = 10:1 etc. max is 0x7F
     }
     else
       lcd.print(F("****"));
